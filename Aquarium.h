@@ -328,7 +328,9 @@ public:
 	}
 	unsigned current_time() const { return tempo; }
 private:
-	mutable std::vector<FishType> types; // все типы рыб в аквариуме. mutable, потому что рыбы могут влиять друг на друга
+ 	// все типы рыб в аквариуме. mutable, потому что рыбы могут влиять друг на друга
+	// all fish types in aquarium. it is mutable, because fishes can interact
+	mutable std::vector<FishType> types;
 	// отношения между типами. чем больше модуль статуса, тем выше приоритет.
 	// 0 - нейтральные. 1, 2, 3... - первая охотится на вторую. -1, -2, -3... - первая убегает от второй.
 	// relations between types. more module of status, the higher the priority.

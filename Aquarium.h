@@ -218,7 +218,9 @@ class Fish {
 public:
 	Fish(Location _l, DeathTime _d, const FishType &_ft)
 		: x(_l.x), y(_l.y), a(_l.a), death_time(_d.value), fish_type(&_ft) {}
-	void check_wall(); // для уворачивания от стен. dodge walls
+	// для уворачивания от стен. когда рыба догоняет, она может ближе подплывать к стенам
+	// dodge walls. when fish chases, it can be closer to walls
+	void check_wall(bool _chase);
 	void check_borders(); // чтобы случайно не вышла за границы. check boundary violation
 	void stay(); // колеблется на месте. stay near its place
 	void walk(); // прогуливается и хаотично поворачивает. walk and randomly turns
@@ -361,8 +363,8 @@ void Fish::check_borders() {
 	if (y > ym) y = ym;
 }
 
-void Fish::check_wall() {
-	const double &vis = fish_type->vision / 4;
+void Fish::check_wall(bool _chase) {
+	const double &vis = fish_type->vision / (_chase ? 3.1 : 1.2);
 	const double &xm = fish_type->aquarium->x_max;
 	const double &ym = fish_type->aquarium->y_max;
 	// координаты единичного вектора с углом a
@@ -395,7 +397,7 @@ void Fish::stay() {
 }
 
 void Fish::walk() {
-	check_wall();
+	check_wall(false);
 	x += (fish_type->speed_walk*cos(a*3.1416 / 180.0));
 	y += (fish_type->speed_walk*sin(a*3.1416 / 180.0));
 	int d = rand() % 16;
@@ -414,7 +416,7 @@ void Fish::run(Fish &_f, bool _chase) {
 	a = atan((_f.y - y) / (_f.x - x)) * 180.0 / 3.1416;
 	if (!(_chase ^ (_f.x < x)))
 		a += 180;
-	check_wall();
+	check_wall(_chase);
 	x += (fish_type->speed_run*cos(a*3.1416 / 180.0));
 	y += (fish_type->speed_run*sin(a*3.1416 / 180.0));
 	check_borders();

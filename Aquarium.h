@@ -6,6 +6,7 @@ vk.com/qwert2603
 
 Важно!!! Не храните объекты класса Aquarium в векторах или деках. Так как для нормальной работы необходимо,
 чтобы указатели на объекты Аквариумов оставались допустимы.
+Important!!! Do not store Aquarium objects in vector or deque, because it is needed pointers to Aquarium object to stay valid.
 
 
 Пример использования:
@@ -230,9 +231,9 @@ public:
 	void eat(Fish &_f);
 	// указатель на ближайшую рыбу с таким дипломатический статусом
 	// pointer to nearst fish with such diplomatic status
-	Fish *nearest(const DiplomaticStatus _ds) const;
+	Fish *nearest(const DiplomaticStatus _ds, bool _is_chase) const;
 	void step();
-	bool is_dead() const;
+	bool is_alive() const;
 	void clear_chase() { chased = false; }
 	bool is_chased() const { return chased; }
 	Location location() const { return Location(X(x), Y(y), A(a)); }
@@ -268,7 +269,7 @@ public:
 	}
 	// вернет указатель и расстояние до ближайшую к этой локации рыбы этого типа
 	// pointer and distance to nearst fish of this type
-	std::pair<Fish *, double> nearest(const Fish &_f);
+	std::pair<Fish *, double> nearest(const Fish &_f, bool _is_chase);
 	void step(); // каждая рыба этого типа делает ход. every fish make step
 	std::string get_name() const { return name.value; }
 	void born(); // рождение новых рыб. borning of new fishes
@@ -328,7 +329,7 @@ public:
 	}
 	unsigned current_time() const { return tempo; }
 private:
- 	// все типы рыб в аквариуме. mutable, потому что рыбы могут влиять друг на друга
+	// все типы рыб в аквариуме. mutable, потому что рыбы могут влиять друг на друга
 	// all fish types in aquarium. it is mutable, because fishes can interact
 	mutable std::vector<FishType> types;
 	// отношения между типами. чем больше модуль статуса, тем выше приоритет.
@@ -348,8 +349,8 @@ double Fish::get_vision() const {
 	return fish_type->vision;
 }
 
-bool Fish::is_dead() const {
-	return fish_type->aquarium->tempo == death_time;
+bool Fish::is_alive() const {
+	return fish_type->aquarium->tempo != death_time;
 }
 
 void FishType::add_fish(const Location _l) {
@@ -366,7 +367,7 @@ void Fish::check_borders() {
 }
 
 void Fish::check_wall(bool _chase) {
-	const double &vis = fish_type->vision / (_chase ? 3.1 : 1.2);
+	const double &vis = fish_type->vision / (_chase ? 8.2 : 1.1);
 	const double &xm = fish_type->aquarium->x_max;
 	const double &ym = fish_type->aquarium->y_max;
 	// координаты единичного вектора с углом a
@@ -422,7 +423,7 @@ void Fish::run(Fish &_f, bool _chase) {
 	x += (fish_type->speed_run*cos(a*3.1416 / 180.0));
 	y += (fish_type->speed_run*sin(a*3.1416 / 180.0));
 	check_borders();
-	if (_chase && _distance(this->location(), _f.location()) < fish_type->aquarium->fish_size)
+	if (_chase && _distance(this->location(), _f.location()) < fish_type->aquarium->fish_size / 2)
 		eat(_f);
 }
 
@@ -432,37 +433,42 @@ void Fish::eat(Fish &_f) {
 	death_time += fish_type->lifetime / 8;
 }
 
-bool is_fish_dead(const Fish &_f) {
-	return _f.is_dead();
+bool is_fish_alive(const Fish &_f) {
+	return _f.is_alive();
 }
 
 void FishType::delete_dead_fishes() {
-	std::list<Fish> fishes_list(fishes.begin(), fishes.end());
-	fishes_list.remove_if(is_fish_dead);
-	fishes.assign(fishes_list.begin(), fishes_list.end());
+	auto iter = partition(fishes.begin(), fishes.end(), is_fish_alive);
+	fishes.erase(iter, fishes.end());
 }
 
-std::pair<Fish *, double> FishType::nearest(const Fish &_f) {
+std::pair<Fish *, double> FishType::nearest(const Fish &_f, bool _is_chase) {
 	// текущая ближайшая рыба и расстояние до нее
 	// current nearest fish and distance to it
 	std::pair<Fish *, double> current_nearest = std::make_pair(nullptr, 1000000);
 	for (Fish &one_fish : fishes) {
-		double current_distance = _distance(_f.location(), one_fish.location());
-		if (current_distance < _f.get_vision() && current_distance < current_nearest.second && !one_fish.is_chased()) {
+		double new_distance = _distance(_f.location(), one_fish.location());
+		// если новая рыба попадает в поле зрения
+		// если растояние до новой обрабатываемой рыбы меньше, чем расстояние до текущей ближайшей,
+		// и если рыба, делающая ход, гонится за рыбой, которую еще никто не преследует
+		// if the new fish enters the field of view,
+		// if the distance to the new processed fish is less than the distance to the nearest current,
+		// if the fish, make a move, chasing fish, which still has not been pursued
+		if (new_distance < _f.get_vision() && new_distance < current_nearest.second && !(_is_chase && one_fish.is_chased())) {
 			current_nearest.first = &one_fish;
-			current_nearest.second = current_distance;
+			current_nearest.second = new_distance;
 		}
 	}
 	return current_nearest;
 }
 
-Fish *Fish::nearest(const DiplomaticStatus _ds) const {
+Fish *Fish::nearest(const DiplomaticStatus _ds, bool _is_chase) const {
 	// текущая ближайшая рыба и расстояние до нее
 	// current nearest fish and distance to it
 	std::pair<Fish *, double> current_nearest = std::make_pair(nullptr, 1000000.0);
 	for (FishType &one_type : fish_type->aquarium->types) {
 		if (fish_type->aquarium->relations.at(std::make_pair(fish_type->get_name(), one_type.get_name())) == _ds) {
-			std::pair<Fish *, double> new_nearest = one_type.nearest(*this);
+			std::pair<Fish *, double> new_nearest = one_type.nearest(*this, _is_chase);
 			if (new_nearest.second < current_nearest.second) {
 				current_nearest = new_nearest;
 			}
@@ -484,7 +490,7 @@ void Fish::step() {
 		}
 	}
 	while (current_diplomatic_status != DiplomaticStatus(0)) {
-		Fish *nearest_fish = nearest(current_diplomatic_status);
+		Fish *nearest_fish = nearest(current_diplomatic_status, false);
 		if (nearest_fish && this != nearest_fish) {
 			run(*nearest_fish, false); // убегать. run away
 			current_diplomatic_status = DiplomaticStatus(0);
@@ -505,7 +511,7 @@ void Fish::step() {
 			}
 		}
 		while (current_diplomatic_status != DiplomaticStatus(0)) {
-			Fish *nearest_fish = nearest(current_diplomatic_status);
+			Fish *nearest_fish = nearest(current_diplomatic_status, true);
 			if (nearest_fish && this != nearest_fish) {
 				run(*nearest_fish, true); // догонять. chase
 				nearest_fish->chased = true;

@@ -52,6 +52,7 @@ circle(one_location.x, one_location.y);	// рисует рыбу в этой т�
 #include <string>
 #include <map>
 #include <algorithm>
+#include <random>
 
 class Fish;
 class FishType;
@@ -221,11 +222,11 @@ public:
 	// pointer to nearst fish with such diplomatic status
 	Fish *nearest(const DiplomaticStatus _ds, bool _is_chase) const;
 	void step();
-	bool is_alive() const { return fish_type->aquarium->tempo != death_time; }
+	bool is_alive() const;
 	void clear_chase() { chased = false; }
 	bool is_chased() const { return chased; }
 	Location location() const { return Location(X(x), Y(y), A(a)); }
-	double get_vision() const { return fish_type->vision; }
+	double get_vision() const;
 private:
 	double x, y, a;
 	unsigned death_time;
@@ -301,7 +302,16 @@ private:
 	// к тому же есть функция time(), так что назовем ее по-итальянски
 	// there is a variable and function called 'time', so it is better to name this variable in Itatian
 	unsigned tempo = 0;
+	std::default_random_engine rand_proc;	// для рандома. for random
 };
+
+double Fish::get_vision() const {
+	return fish_type->vision;
+}
+
+bool Fish::is_alive() const {
+	return fish_type->aquarium->tempo != death_time;
+}
 
 void FishType::add_fish(const Location _l) {
 	fishes.emplace_back(_l, DeathTime(aquarium->tempo + lifetime), *this);
@@ -335,7 +345,8 @@ void Fish::check_wall(bool _chase) {
 void Fish::stay() {
 	const double &xm = fish_type->aquarium->x_max;
 	const double &ym = fish_type->aquarium->y_max;
-	int d = rand() % 19;
+	std::uniform_int_distribution<unsigned> unif_distr(0, 18);
+	int d = unif_distr(fish_type->aquarium->rand_proc);
 	switch (d) {
 	case 1: x -= 0.9;	break;
 	case 2: y -= 0.9;	break;
@@ -353,7 +364,8 @@ void Fish::walk() {
 	check_wall(false);
 	x += (fish_type->speed_walk*cos(a*3.1416 / 180.0));
 	y += (fish_type->speed_walk*sin(a*3.1416 / 180.0));
-	int d = rand() % 16;
+	std::uniform_int_distribution<unsigned> unif_distr(0, 15);
+	int d = unif_distr(fish_type->aquarium->rand_proc);
 	switch (d) {
 	case 1: a += 2.1;	break;
 	case 2: a -= 2.1;	break;
@@ -553,9 +565,10 @@ void Aquarium::step() {
 
 void FishType::born() {
 	auto count = fishes.size();
+	std::uniform_int_distribution<unsigned> unif_distr(0, birth_frequency - 1);
 	while (count) {
 		--count;
-		if (fishes.size() != max_count && rand() % birth_frequency == 1)
+		if (fishes.size() != max_count && unif_distr(aquarium->rand_proc) == 1)
 			add_fish(fishes[count].location());
 	}
 }

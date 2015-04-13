@@ -205,7 +205,7 @@ double _distance(const Location _l1, const Location _l2) {
 
 class Fish {
 public:
-	Fish(Location _l, DeathTime _d, FishType &_ft)
+	Fish(Location _l, DeathTime _d, FishType &_ft) 
 		: x(_l.x), y(_l.y), a(_l.a), death_time(_d.value), fish_type(&_ft) {}
 	// для уворачивания от стен. когда рыба догоняет, она может ближе подплывать к стенам
 	// dodge walls. when fish chases, it can be closer to walls
@@ -221,11 +221,11 @@ public:
 	// pointer to nearst fish with such diplomatic status
 	Fish *nearest(const DiplomaticStatus _ds, bool _is_chase) const;
 	void step();
-	bool is_alive() const;
+	bool is_alive() const { return fish_type->aquarium->tempo != death_time; }
 	void clear_chase() { chased = false; }
 	bool is_chased() const { return chased; }
 	Location location() const { return Location(X(x), Y(y), A(a)); }
-	double get_vision() const;
+	double get_vision() const { return fish_type->vision; }
 private:
 	double x, y, a;
 	unsigned death_time;
@@ -240,22 +240,15 @@ private:
 class FishType {
 	friend class Fish;
 public:
-	FishType(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v, BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st, Aquarium &_aq)
+	FishType(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v, BirthFrequency _bf,
+		Lifetime _lt, MaxCount _mc, Settled _st, Aquarium &_aq)
 		: name(_ftn), speed_walk(_sw.value), speed_run(_sr.value), vision(_v.value), birth_frequency(_bf.value),
 		lifetime(_lt.value), max_count(_mc.value), settled(_st.value), aquarium(&_aq) {}
 	void add_fish(const Location _l);
 	void delete_dead_fishes();
-	void clear_chases() {
-		for (Fish &one_fish : fishes)
-			one_fish.clear_chase();
-	}
-	std::pair<const std::string, std::vector<Location>> locations() const {
-		std::vector<Location> locs;
-		for (const Fish &one_fish : fishes)
-			locs.push_back(one_fish.location());
-		return std::make_pair(name.value, locs);
-	}
-	// вернет указатель и расстояние до ближайшую к этой локации рыбы этого типа
+	void clear_chases();
+	std::pair<const std::string, std::vector<Location>> locations() const;
+	// вернет указатель и расстояние до ближайшей к этой локации рыбы этого типа
 	// pointer and distance to nearst fish of this type
 	std::pair<Fish *, double> nearest(const Fish &_f, bool _is_chase);
 	void step(); // каждая рыба этого типа делает ход. every fish make step
@@ -287,38 +280,15 @@ public:
 		: x_max(_xm.value), y_max(_ym.value), fish_size(_sz.value), tempo(0) {}
 	// все рыбы делают ход. all fishes make step
 	void step();
-	void add_type(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v, BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st) {
-		types.emplace_back(_ftn, _sw, _sr, _v, _bf, _lt, _mc, _st, *this);
-		// сделать тип взаимно нейтральным ко всем другим типам
-		// to make this fish type neutral to all other ones
-		for (const FishType &_ft : types) {
-			set_diplomatic_status(FishTypeName(types.back().get_name()), FishTypeName(_ft.get_name()), DiplomaticStatus(0));
-			set_diplomatic_status(FishTypeName(_ft.get_name()), FishTypeName(types.back().get_name()), DiplomaticStatus(0));
-		}
-	}
-	void add_fish(FishTypeName _ftn, const Location _l) {
-		auto type_iter = find_if(types.begin(), types.end(), [&](const FishType &_ft){ return _ft.get_name() == _ftn.value; });
-		type_iter->add_fish(_l);
-	}
+	void add_type(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v, 
+		BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st);
+	void add_fish(FishTypeName _ftn, const Location _l);
 	// получить координаты всех рыб. get locations of all fishes
-	std::map<std::string, std::vector<Location>> locations() const {
-		std::map<std::string, std::vector<Location>> locs;
-		for (const FishType &one_type : types)
-			locs.insert(one_type.locations());
-		return locs;
-	}
-	void set_diplomatic_status(const FishTypeName &_ftn1, const FishTypeName &_ftn2, const DiplomaticStatus _ds) {
-		if (relations.find(std::make_pair(_ftn1.value, _ftn2.value)) == relations.end()) {
-			relations.insert(std::make_pair(std::make_pair(_ftn1.value, _ftn2.value), _ds));
-		}
-		else {
-			relations.at(std::make_pair(_ftn1.value, _ftn2.value)) = _ds;
-		}
-	}
+	std::map<std::string, std::vector<Location>> locations() const;
+	void set_diplomatic_status(const FishTypeName &_ftn1, const FishTypeName &_ftn2, const DiplomaticStatus _ds);
 	unsigned current_time() const { return tempo; }
 private:
-	// все типы рыб в аквариуме.
-	// all fish types in aquarium.
+	// все типы рыб в аквариуме. all fish types in aquarium.
 	std::vector<FishType> types;
 	// отношения между типами. чем больше модуль статуса, тем выше приоритет.
 	// 0 - нейтральные. 1, 2, 3... - первая охотится на вторую. -1, -2, -3... - первая убегает от второй.
@@ -332,14 +302,6 @@ private:
 	// there is a variable and function called 'time', so it is better to name this variable in Itatian
 	unsigned tempo = 0;
 };
-
-double Fish::get_vision() const {
-	return fish_type->vision;
-}
-
-bool Fish::is_alive() const {
-	return fish_type->aquarium->tempo != death_time;
-}
 
 void FishType::add_fish(const Location _l) {
 	fishes.emplace_back(_l, DeathTime(aquarium->tempo + lifetime), *this);
@@ -425,9 +387,54 @@ bool is_fish_alive(const Fish &_f) {
 	return _f.is_alive();
 }
 
+void FishType::clear_chases() {
+	for (Fish &one_fish : fishes)
+		one_fish.clear_chase();
+}
+
+std::pair<const std::string, std::vector<Location>> FishType::locations() const {
+	std::vector<Location> locs;
+	for (const Fish &one_fish : fishes)
+		locs.push_back(one_fish.location());
+	return std::make_pair(name.value, locs);
+}
+
 void FishType::delete_dead_fishes() {
 	auto iter = partition(fishes.begin(), fishes.end(), is_fish_alive);
 	fishes.erase(iter, fishes.end());
+}
+
+void Aquarium::add_type(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v,
+	BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st) {
+	types.emplace_back(_ftn, _sw, _sr, _v, _bf, _lt, _mc, _st, *this);
+	// сделать тип взаимно нейтральным ко всем другим типам
+	// to make this fish type neutral to all other ones
+	for (const FishType &_ft : types) {
+		set_diplomatic_status(FishTypeName(types.back().get_name()), FishTypeName(_ft.get_name()), DiplomaticStatus(0));
+		set_diplomatic_status(FishTypeName(_ft.get_name()), FishTypeName(types.back().get_name()), DiplomaticStatus(0));
+	}
+}
+
+void Aquarium::add_fish(FishTypeName _ftn, const Location _l) {
+	auto type_iter = find_if(types.begin(), types.end(),
+		[&](const FishType &_ft){ return _ft.get_name() == _ftn.value; });
+	type_iter->add_fish(_l);
+}
+
+std::map<std::string, std::vector<Location>> Aquarium::locations() const {
+	std::map<std::string, std::vector<Location>> locs;
+	for (const FishType &one_type : types)
+		locs.insert(one_type.locations());
+	return locs;
+}
+
+void Aquarium::set_diplomatic_status(const FishTypeName &_ftn1, const FishTypeName &_ftn2, const DiplomaticStatus _ds) {
+	if (relations.find(std::make_pair(_ftn1.value, _ftn2.value)) == relations.end()) {
+		relations.insert(std::make_pair(std::make_pair(_ftn1.value, _ftn2.value), _ds));
+	}
+	else {
+		relations.at(std::make_pair(_ftn1.value, _ftn2.value)) = _ds;
+	}
 }
 
 std::pair<Fish *, double> FishType::nearest(const Fish &_f, bool _is_chase) {
@@ -479,7 +486,7 @@ void Fish::step() {
 	}
 	while (current_diplomatic_status != DiplomaticStatus(0)) {
 		Fish *nearest_fish = nearest(current_diplomatic_status, false);
-		if (nearest_fish && this != nearest_fish) {
+		if (nearest_fish) {
 			run(*nearest_fish, false); // убегать. run away
 			current_diplomatic_status = DiplomaticStatus(0);
 			done = true;
@@ -500,7 +507,7 @@ void Fish::step() {
 		}
 		while (current_diplomatic_status != DiplomaticStatus(0)) {
 			Fish *nearest_fish = nearest(current_diplomatic_status, true);
-			if (nearest_fish && this != nearest_fish) {
+			if (nearest_fish) {
 				run(*nearest_fish, true); // догонять. chase
 				nearest_fish->chased = true;
 				current_diplomatic_status = DiplomaticStatus(0);

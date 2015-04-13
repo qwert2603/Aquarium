@@ -1,27 +1,18 @@
 /*
-
 Aquarium.h by Alex Zhdanov. 2014-2015.
 vk.com/qwert2603
-
-
 Важно!!! Не храните объекты класса Aquarium в векторах или деках. Так как для нормальной работы необходимо,
 чтобы указатели на объекты Аквариумов оставались допустимы.
 Important!!! Do not store Aquarium objects in vector or deque, because it is needed pointers to Aquarium object to stay valid.
-
-
 Пример использования:
 Example of using:
-
 double x_m = 1300, y_m = 650;
 double size = 10;
-
 Aquarium a1{ XMax(x_m), YMax(y_m), FishSize(size) };
-
 a1.add_type(FishTypeName("hish"), SpeedWalk(6), SpeedRun(8), Vision(110), BirthFrequency(700), Lifetime(800), MaxCount(10), Settled(false));
 a1.add_type(FishTypeName("hish2"), SpeedWalk(6), SpeedRun(8), Vision(110), BirthFrequency(700), Lifetime(800), MaxCount(10), Settled(false));
 a1.add_type(FishTypeName("trav"), SpeedWalk(5), SpeedRun(7.5), Vision(85), BirthFrequency(100), Lifetime(600), MaxCount(10), Settled(true));
 a1.add_type(FishTypeName("trav2"), SpeedWalk(5), SpeedRun(7), Vision(70), BirthFrequency(100), Lifetime(500), MaxCount(10), Settled(false));
-
 a1.add_fish(FishTypeName("hish"), Location(X(300), Y(300), A(0)));
 a1.add_fish(FishTypeName("hish2"), Location(X(100), Y(300), A(0)));
 a1.add_fish(FishTypeName("hish"), Location(X(100), Y(500), A(0)));
@@ -30,7 +21,6 @@ a1.add_fish(FishTypeName("trav"), Location(X(700), Y(150), A(0)));
 a1.add_fish(FishTypeName("trav"), Location(X(300), Y(310), A(0)));
 a1.add_fish(FishTypeName("trav2"), Location(X(400), Y(300), A(0)));
 a1.add_fish(FishTypeName("trav2"), Location(X(500), Y(190), A(0)));
-
 a1.set_diplomatic_status(FishTypeName("hish2"), FishTypeName("trav"), DiplomaticStatus(1));
 a1.set_diplomatic_status(FishTypeName("hish2"), FishTypeName("trav2"), DiplomaticStatus(2));
 a1.set_diplomatic_status(FishTypeName("hish"), FishTypeName("trav"), DiplomaticStatus(2));
@@ -39,19 +29,17 @@ a1.set_diplomatic_status(FishTypeName("trav"), FishTypeName("hish"), DiplomaticS
 a1.set_diplomatic_status(FishTypeName("trav"), FishTypeName("hish2"), DiplomaticStatus(-1));
 a1.set_diplomatic_status(FishTypeName("trav2"), FishTypeName("hish2"), DiplomaticStatus(-2));
 a1.set_diplomatic_status(FishTypeName("trav2"), FishTypeName("hish"), DiplomaticStatus(-1));
-
 for(;;) {
-	a1.step();
-	// koord - это map, хранящая навание типа и вектор типа Location, где хранятся координаты всех рыб этого типа
-	auto koord = a1.locations();
-	for (const auto &one_type : koord) {
-		for (const auto &one_location : one_type.second) {
-			circle(one_location.x, one_location.y);	// рисует рыбу в этой точке
-		}
-		++c;
-	}
+a1.step();
+// koord - это map, хранящая навание типа и вектор типа Location, где хранятся координаты всех рыб этого типа
+auto koord = a1.locations();
+for (const auto &one_type : koord) {
+for (const auto &one_location : one_type.second) {
+circle(one_location.x, one_location.y);	// рисует рыбу в этой точке
 }
-
+++c;
+}
+}
 */
 
 #ifndef AQUARIUM
@@ -217,7 +205,7 @@ double _distance(const Location _l1, const Location _l2) {
 
 class Fish {
 public:
-	Fish(Location _l, DeathTime _d, const FishType &_ft)
+	Fish(Location _l, DeathTime _d, FishType &_ft)
 		: x(_l.x), y(_l.y), a(_l.a), death_time(_d.value), fish_type(&_ft) {}
 	// для уворачивания от стен. когда рыба догоняет, она может ближе подплывать к стенам
 	// dodge walls. when fish chases, it can be closer to walls
@@ -246,13 +234,13 @@ private:
 	bool chased = false;
 	// указатель на объект класса FishType, которому принадлежит рыба
 	// pointer to FishType object that this fish belongs to
-	const FishType *fish_type;
+	FishType *fish_type;
 };
 
 class FishType {
 	friend class Fish;
 public:
-	FishType(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v, BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st, const Aquarium &_aq)
+	FishType(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v, BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st, Aquarium &_aq)
 		: name(_ftn), speed_walk(_sw.value), speed_run(_sr.value), vision(_v.value), birth_frequency(_bf.value),
 		lifetime(_lt.value), max_count(_mc.value), settled(_st.value), aquarium(&_aq) {}
 	void add_fish(const Location _l);

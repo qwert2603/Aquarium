@@ -30,15 +30,14 @@ a1.set_diplomatic_status(FishTypeName("trav"), FishTypeName("hish2"), Diplomatic
 a1.set_diplomatic_status(FishTypeName("trav2"), FishTypeName("hish2"), DiplomaticStatus(-2));
 a1.set_diplomatic_status(FishTypeName("trav2"), FishTypeName("hish"), DiplomaticStatus(-1));
 for(;;) {
-a1.step();
-// koord - это map, хранящая навание типа и вектор типа Location, где хранятся координаты всех рыб этого типа
-auto koord = a1.locations();
-for (const auto &one_type : koord) {
-for (const auto &one_location : one_type.second) {
-circle(one_location.x, one_location.y);	// рисует рыбу в этой точке
-}
-++c;
-}
+	a1.step();
+	// koord - это map, хранящая навание типа и вектор типа Location, где хранятся координаты всех рыб этого типа
+	auto koord = a1.locations();
+	for (const auto &one_type : koord) {
+		for (const auto &one_location : one_type.second) {
+			circle(one_location.x, one_location.y);	// рисует рыбу в этой точке
+		}
+	}
 }
 */
 
@@ -48,7 +47,6 @@ circle(one_location.x, one_location.y);	// рисует рыбу в этой т�
 #include <iostream>
 #include <ctime>
 #include <vector>
-#include <list>
 #include <string>
 #include <map>
 #include <algorithm>
@@ -310,7 +308,7 @@ double Fish::get_vision() const {
 }
 
 bool Fish::is_alive() const {
-	return fish_type->aquarium->tempo != death_time;
+	return death_time != fish_type->aquarium->tempo;
 }
 
 void FishType::add_fish(const Location _l) {
@@ -395,10 +393,6 @@ void Fish::eat(Fish &_f) {
 	death_time += fish_type->lifetime / 8;
 }
 
-bool is_fish_alive(const Fish &_f) {
-	return _f.is_alive();
-}
-
 void FishType::clear_chases() {
 	for (Fish &one_fish : fishes)
 		one_fish.clear_chase();
@@ -412,7 +406,7 @@ std::pair<const std::string, std::vector<Location>> FishType::locations() const 
 }
 
 void FishType::delete_dead_fishes() {
-	auto iter = partition(fishes.begin(), fishes.end(), is_fish_alive);
+	auto iter = partition(fishes.begin(), fishes.end(), [](const Fish &_f) { return _f.is_alive(); });
 	fishes.erase(iter, fishes.end());
 }
 

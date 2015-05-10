@@ -4,41 +4,6 @@ vk.com/qwert2603
 Важно!!! Не храните объекты класса Aquarium в векторах или деках. Так как для нормальной работы необходимо,
 чтобы указатели на объекты Аквариумов оставались допустимы.
 Important!!! Do not store Aquarium objects in vector or deque, because it is needed pointers to Aquarium object to stay valid.
-Пример использования:
-Example of using:
-double x_m = 1300, y_m = 650;
-double size = 10;
-Aquarium a1{ XMax(x_m), YMax(y_m), FishSize(size) };
-a1.add_type(FishTypeName("hish"), SpeedWalk(6), SpeedRun(8), Vision(110), BirthFrequency(700), Lifetime(800), MaxCount(10), Settled(false));
-a1.add_type(FishTypeName("hish2"), SpeedWalk(6), SpeedRun(8), Vision(110), BirthFrequency(700), Lifetime(800), MaxCount(10), Settled(false));
-a1.add_type(FishTypeName("trav"), SpeedWalk(5), SpeedRun(7.5), Vision(85), BirthFrequency(100), Lifetime(600), MaxCount(10), Settled(true));
-a1.add_type(FishTypeName("trav2"), SpeedWalk(5), SpeedRun(7), Vision(70), BirthFrequency(100), Lifetime(500), MaxCount(10), Settled(false));
-a1.add_fish(FishTypeName("hish"), Location(X(300), Y(300), A(0)));
-a1.add_fish(FishTypeName("hish2"), Location(X(100), Y(300), A(0)));
-a1.add_fish(FishTypeName("hish"), Location(X(100), Y(500), A(0)));
-a1.add_fish(FishTypeName("trav"), Location(X(200), Y(300), A(0)));
-a1.add_fish(FishTypeName("trav"), Location(X(700), Y(150), A(0)));
-a1.add_fish(FishTypeName("trav"), Location(X(300), Y(310), A(0)));
-a1.add_fish(FishTypeName("trav2"), Location(X(400), Y(300), A(0)));
-a1.add_fish(FishTypeName("trav2"), Location(X(500), Y(190), A(0)));
-a1.set_diplomatic_status(FishTypeName("hish2"), FishTypeName("trav"), DiplomaticStatus(1));
-a1.set_diplomatic_status(FishTypeName("hish2"), FishTypeName("trav2"), DiplomaticStatus(2));
-a1.set_diplomatic_status(FishTypeName("hish"), FishTypeName("trav"), DiplomaticStatus(2));
-a1.set_diplomatic_status(FishTypeName("hish"), FishTypeName("trav2"), DiplomaticStatus(1));
-a1.set_diplomatic_status(FishTypeName("trav"), FishTypeName("hish"), DiplomaticStatus(-2));
-a1.set_diplomatic_status(FishTypeName("trav"), FishTypeName("hish2"), DiplomaticStatus(-1));
-a1.set_diplomatic_status(FishTypeName("trav2"), FishTypeName("hish2"), DiplomaticStatus(-2));
-a1.set_diplomatic_status(FishTypeName("trav2"), FishTypeName("hish"), DiplomaticStatus(-1));
-for(;;) {
-	a1.step();
-	// koord - это map, хранящая навание типа и вектор типа Location, где хранятся координаты всех рыб этого типа
-	auto koord = a1.locations();
-	for (const auto &one_type : koord) {
-		for (const auto &one_location : one_type.second) {
-			circle(one_location.x, one_location.y);	// рисует рыбу в этой точке
-		}
-	}
-}
 */
 
 #ifndef AQUARIUM

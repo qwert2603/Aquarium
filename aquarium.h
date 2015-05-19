@@ -272,19 +272,27 @@ namespace aquarium {
 		std::default_random_engine rand_proc;	// для рандома. for random
 	};
 
-	double Fish::get_vision() const {
+	inline double radian_to_degree(double _angel) {
+		return _angel*180.0 / 3.1415926;
+	}
+
+	inline double degree_to_radian(double _angel) {
+		return _angel*3.1415926 / 180.0;
+	}
+
+	inline double Fish::get_vision() const {
 		return fish_type->vision;
 	}
 
-	bool Fish::is_alive() const {
+	inline bool Fish::is_alive() const {
 		return death_time != fish_type->aquarium->tempo;
 	}
 
-	void FishType::add_fish(const Location _l) {
+	inline void FishType::add_fish(const Location _l) {
 		fishes.emplace_back(_l, DeathTime(aquarium->tempo + lifetime), *this);
 	}
 
-	void Fish::check_borders() {
+	inline void Fish::check_borders() {
 		const double &xm = fish_type->aquarium->x_max;
 		const double &ym = fish_type->aquarium->y_max;
 		if (x < 0) x = 0;
@@ -293,23 +301,23 @@ namespace aquarium {
 		if (y > ym) y = ym;
 	}
 
-	void Fish::check_wall(bool _chase) {
+	inline void Fish::check_wall(bool _chase) {
 		const double &vis = fish_type->vision / (_chase ? 8.2 : 1.1);
 		const double &xm = fish_type->aquarium->x_max;
 		const double &ym = fish_type->aquarium->y_max;
 		// координаты единичного вектора с углом a
 		// coordinates of the unit vector with the angle a
-		double i = cos(a*3.1416 / 180.0);
-		double j = sin(a*3.1416 / 180.0);
+		double i = cos(degree_to_radian(a));
+		double j = sin(degree_to_radian(a));
 		if (x < vis)		i += ((vis - x) / vis);
 		if (y < vis)		j += ((vis - y) / vis);
 		if (x > xm - vis)	i -= ((vis + x - xm) / vis);
 		if (y > ym - vis)	j -= ((vis + y - ym) / vis);
-		a = atan(j / i)*180.0 / 3.1416;
+		a = radian_to_degree(atan(j / i));
 		if (i < 0) a += 180.0;
 	}
 
-	void Fish::stay() {
+	inline void Fish::stay() {
 		const double &xm = fish_type->aquarium->x_max;
 		const double &ym = fish_type->aquarium->y_max;
 		std::uniform_int_distribution<unsigned> unif_distr(0, 18);
@@ -327,10 +335,10 @@ namespace aquarium {
 		check_borders();
 	}
 
-	void Fish::walk() {
+	inline void Fish::walk() {
 		check_wall(false);
-		x += (fish_type->speed_walk*cos(a*3.1416 / 180.0));
-		y += (fish_type->speed_walk*sin(a*3.1416 / 180.0));
+		x += (fish_type->speed_walk*cos(degree_to_radian(a)));
+		y += (fish_type->speed_walk*sin(degree_to_radian(a)));
 		std::uniform_int_distribution<unsigned> unif_distr(0, 15);
 		int d = unif_distr(fish_type->aquarium->rand_proc);
 		switch (d) {
@@ -344,42 +352,42 @@ namespace aquarium {
 		check_borders();
 	}
 
-	void Fish::run(Fish &_f, bool _chase) {
-		a = atan((_f.y - y) / (_f.x - x)) * 180.0 / 3.1416;
+	inline void Fish::run(Fish &_f, bool _chase) {
+		a = radian_to_degree(atan((_f.y - y) / (_f.x - x)));
 		if (!(_chase ^ (_f.x < x)))
 			a += 180;
 		check_wall(_chase);
-		x += (fish_type->speed_run*cos(a*3.1416 / 180.0));
-		y += (fish_type->speed_run*sin(a*3.1416 / 180.0));
+		x += (fish_type->speed_run*cos(degree_to_radian(a)));
+		y += (fish_type->speed_run*sin(degree_to_radian(a)));
 		check_borders();
 		if (_chase && _distance(this->location(), _f.location()) < fish_type->aquarium->fish_size / 2)
 			eat(_f);
 	}
 
-	void Fish::eat(Fish &_f) {
+	inline void Fish::eat(Fish &_f) {
 		_f.death_time = fish_type->aquarium->tempo + 1;
 		// еда продлевает жизнь. food makes life longer
 		death_time += fish_type->lifetime / 8;
 	}
 
-	void FishType::clear_chases() {
+	inline void FishType::clear_chases() {
 		for (Fish &one_fish : fishes)
 			one_fish.clear_chase();
 	}
 
-	std::pair<const std::string, std::vector<Location>> FishType::locations() const {
+	inline std::pair<const std::string, std::vector<Location>> FishType::locations() const {
 		std::vector<Location> locs;
 		for (const Fish &one_fish : fishes)
 			locs.push_back(one_fish.location());
 		return std::make_pair(name.value, locs);
 	}
 
-	void FishType::delete_dead_fishes() {
+	inline void FishType::delete_dead_fishes() {
 		auto iter = partition(fishes.begin(), fishes.end(), [](const Fish &_f) { return _f.is_alive(); });
 		fishes.erase(iter, fishes.end());
 	}
 
-	void Aquarium::add_type(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v,
+	inline void Aquarium::add_type(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v,
 		BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st) {
 		types.emplace_back(_ftn, _sw, _sr, _v, _bf, _lt, _mc, _st, *this);
 		// сделать тип взаимно нейтральным ко всем другим типам
@@ -390,20 +398,20 @@ namespace aquarium {
 		}
 	}
 
-	void Aquarium::add_fish(FishTypeName _ftn, const Location _l) {
+	inline void Aquarium::add_fish(FishTypeName _ftn, const Location _l) {
 		auto type_iter = find_if(types.begin(), types.end(),
 			[&](const FishType &_ft){ return _ft.get_name() == _ftn.value; });
 		type_iter->add_fish(_l);
 	}
 
-	std::map<std::string, std::vector<Location>> Aquarium::get_fish_locations() const {
+	inline std::map<std::string, std::vector<Location>> Aquarium::get_fish_locations() const {
 		std::map<std::string, std::vector<Location>> locs;
 		for (const FishType &one_type : types)
 			locs.insert(one_type.locations());
 		return locs;
 	}
 
-	void Aquarium::set_diplomatic_status(const FishTypeName &_ftn1, const FishTypeName &_ftn2, const DiplomaticStatus _ds) {
+	inline void Aquarium::set_diplomatic_status(const FishTypeName &_ftn1, const FishTypeName &_ftn2, const DiplomaticStatus _ds) {
 		if (relations.find(std::make_pair(_ftn1.value, _ftn2.value)) == relations.end()) {
 			relations.insert(std::make_pair(std::make_pair(_ftn1.value, _ftn2.value), _ds));
 		}
@@ -412,7 +420,7 @@ namespace aquarium {
 		}
 	}
 
-	std::pair<Fish *, double> FishType::nearest(const Fish &_f, bool _is_chase) {
+	inline std::pair<Fish *, double> FishType::nearest(const Fish &_f, bool _is_chase) {
 		// текущая ближайшая рыба и расстояние до нее
 		// current nearest fish and distance to it
 		std::pair<Fish *, double> current_nearest = std::make_pair(nullptr, 1000000);
@@ -432,7 +440,7 @@ namespace aquarium {
 		return current_nearest;
 	}
 
-	Fish *Fish::nearest(const DiplomaticStatus _ds, bool _is_chase) const {
+	inline Fish *Fish::nearest(const DiplomaticStatus _ds, bool _is_chase) const {
 		// текущая ближайшая рыба и расстояние до нее
 		// current nearest fish and distance to it
 		std::pair<Fish *, double> current_nearest = std::make_pair(nullptr, 1000000.0);
@@ -504,13 +512,13 @@ namespace aquarium {
 		}
 	}
 
-	void FishType::step() {
+	inline void FishType::step() {
 		for (Fish &one_fish : fishes) {
 			one_fish.step();
 		}
 	}
 
-	void Aquarium::step() {
+	inline void Aquarium::step() {
 		for (FishType &one_type : types) {
 			one_type.delete_dead_fishes();
 		}
@@ -526,7 +534,7 @@ namespace aquarium {
 		++tempo;
 	}
 
-	void FishType::born() {
+	inline void FishType::born() {
 		auto count = fishes.size();
 		std::uniform_int_distribution<unsigned> unif_distr(0, birth_frequency - 1);
 		while (count) {

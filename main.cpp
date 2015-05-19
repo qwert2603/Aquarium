@@ -56,15 +56,16 @@ int main() {
 	Aquarium a1{ XMax(x_m), YMax(y_m), FishSize(fish_size) };
 
 	// добавляем типы рыб
-	a1.add_type(FishTypeName("main_hish"), SpeedWalk(7), SpeedRun(8.5), Vision(140), BirthFrequency(600), Lifetime(1200), MaxCount(200), Settled(false));
-	a1.add_type(FishTypeName("hish"), SpeedWalk(6), SpeedRun(8), Vision(110), BirthFrequency(270), Lifetime(800), MaxCount(400), Settled(false));
-	a1.add_type(FishTypeName("hish2"), SpeedWalk(6), SpeedRun(7.8), Vision(100), BirthFrequency(240), Lifetime(700), MaxCount(500), Settled(false));
-	a1.add_type(FishTypeName("trav"), SpeedWalk(5), SpeedRun(7.5), Vision(85), BirthFrequency(120), Lifetime(600), MaxCount(700), Settled(true));
-	a1.add_type(FishTypeName("trav2"), SpeedWalk(5), SpeedRun(7), Vision(70), BirthFrequency(90), Lifetime(500), MaxCount(900), Settled(false));
+	a1.add_type(FishTypeName("main_hish"), SpeedWalk(7), SpeedRun(8.5), Vision(140), BirthFrequency(600), Lifetime(1200), MaxCount(15), Settled(false));
+	a1.add_type(FishTypeName("hish"), SpeedWalk(6), SpeedRun(8), Vision(110), BirthFrequency(270), Lifetime(800), MaxCount(20), Settled(false));
+	a1.add_type(FishTypeName("hish2"), SpeedWalk(6), SpeedRun(7.8), Vision(100), BirthFrequency(240), Lifetime(700), MaxCount(30), Settled(false));
+	a1.add_type(FishTypeName("trav"), SpeedWalk(5), SpeedRun(7.5), Vision(85), BirthFrequency(150), Lifetime(600), MaxCount(40), Settled(true));
+	a1.add_type(FishTypeName("trav2"), SpeedWalk(5), SpeedRun(7), Vision(70), BirthFrequency(120), Lifetime(500), MaxCount(60), Settled(false));
 	
 	// добавляем самих рыб
-	for (unsigned u = 0; u != 8; ++u) {
-		a1.add_fish(FishTypeName("main_hish"), Location(X(1000), Y(300), A(0)));
+	a1.add_fish(FishTypeName("main_hish"), Location(X(1000), Y(300), A(0)));
+	a1.add_fish(FishTypeName("main_hish"), Location(X(1000), Y(400), A(180)));
+	for (unsigned u = 0; u != 4; ++u) {
 		a1.add_fish(FishTypeName("hish"), Location(X(300), Y(400), A(90)));
 		a1.add_fish(FishTypeName("hish"), Location(X(300), Y(400), A(111)));
 		a1.add_fish(FishTypeName("hish"), Location(X(300), Y(400), A(140)));
@@ -160,7 +161,9 @@ int main() {
 		window.display();
 
 		// задержка времени
-		Sleep(25);
+		Sleep(26);
 	}
+
 	return 0;
 }
+

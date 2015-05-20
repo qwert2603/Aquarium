@@ -51,6 +51,7 @@ namespace aquarium {
 
 	class A {
 		friend class Location;
+		friend class Fish;
 	public:
 		explicit A(double _a) : value(_a) {}
 	private:
@@ -166,6 +167,15 @@ namespace aquarium {
 		double x, y, a;
 	};
 
+	class FishNumber {
+		friend class FishType;
+	public:
+		explicit FishNumber(std::vector<FishType>::size_type _fn) : value(_fn) { if (_fn < 0) throw std::runtime_error("FishNumber < 0"); }
+	private:
+		std::vector<FishType>::size_type value;
+	};
+
+	// расстояние между 2 местоположениями
 	double _distance(const Location _l1, const Location _l2) {
 		return sqrt((_l2.x - _l1.x)*(_l2.x - _l1.x) + (_l2.y - _l1.y)*(_l2.y - _l1.y));
 	}
@@ -173,7 +183,7 @@ namespace aquarium {
 	class Fish {
 	public:
 		Fish(Location _l, DeathTime _d, FishType &_ft)
-			: x(_l.x), y(_l.y), a(_l.a), death_time(_d.value), fish_type(&_ft) {}
+			: x(_l.x), y(_l.y), a(_l.a), death_time(_d.value), fish_type(&_ft), chased(false), step_done(false) {}
 		// для уворачивания от стен. когда рыба догоняет, она может ближе подплывать к стенам
 		// dodge walls. when fish chases, it can be closer to walls
 		void check_wall(bool _chase);
@@ -184,12 +194,15 @@ namespace aquarium {
 		// chase fish(_chase == true) or run away from it(_chase == false)
 		void run(Fish &_f, bool _chase);
 		void eat(Fish &_f);
+		// плыть в указанном направлении
+		void control(A _a);
 		// указатель на ближайшую рыбу с таким дипломатический статусом
 		// pointer to nearst fish with such diplomatic status
 		Fish *nearest(const DiplomaticStatus _ds, bool _is_chase) const;
 		void step();
 		bool is_alive() const;
 		void clear_chase() { chased = false; }
+		void clear_step_done() { step_done = false; }
 		bool is_chased() const { return chased; }
 		Location location() const { return Location(X(x), Y(y), A(a)); }
 		double get_vision() const;
@@ -198,7 +211,10 @@ namespace aquarium {
 		unsigned death_time;
 		// догоняют ли эту рыбу в текущий момент (чтобы много рыб не гонялось за одной)
 		// is this fish chased at the moment
-		bool chased = false;
+		bool chased;
+		// ? сделала ли рыба ход
+		// is fish made step
+		bool step_done;
 		// указатель на объект класса FishType, которому принадлежит рыба
 		// pointer to FishType object that this fish belongs to
 		FishType *fish_type;
@@ -211,9 +227,12 @@ namespace aquarium {
 			Lifetime _lt, MaxCount _mc, Settled _st, Aquarium &_aq)
 			: name(_ftn), speed_walk(_sw.value), speed_run(_sr.value), vision(_v.value), birth_frequency(_bf.value),
 			lifetime(_lt.value), max_count(_mc.value), settled(_st.value), aquarium(&_aq) {}
-		void add_fish(const Location _l);
+		void add_fish(const Location &_l);
+		// управление нужной рыбой
+		void fish_control(FishNumber _fn, A _a);
 		void delete_dead_fishes();
 		void clear_chases();
+		void clear_step_done();
 		std::pair<const std::string, std::vector<Location>> locations() const;
 		// вернет указатель и расстояние до ближайшей к этой локации рыбы этого типа
 		// pointer and distance to nearst fish of this type
@@ -248,8 +267,12 @@ namespace aquarium {
 				rand_proc(static_cast<unsigned>(std::time(nullptr))) {}
 		// все рыбы делают ход. all fishes make step
 		void step();
+		// заставить эту рыбу плыть в нужном направлении
+		void fish_control(FishTypeName _ftn, FishNumber _fn, A _a);
+		// добавить тип рыб
 		void add_type(FishTypeName _ftn, SpeedWalk _sw, SpeedRun _sr, Vision _v,
 			BirthFrequency _bf, Lifetime _lt, MaxCount _mc, Settled _st);
+		// добавить рыбу
 		void add_fish(FishTypeName _ftn, const Location _l);
 		// получить координаты всех рыб. get locations of all fishes
 		std::map<std::string, std::vector<Location>> get_fish_locations() const;
@@ -272,12 +295,14 @@ namespace aquarium {
 		std::default_random_engine rand_proc;	// для рандома. for random
 	};
 
-	inline double radian_to_degree(double _angel) {
-		return _angel*180.0 / 3.1415926;
+	// преобразование из радиан в градусы
+	inline double radian_to_degree(double _angle) {
+		return _angle*180.0 / 3.1415926;
 	}
 
-	inline double degree_to_radian(double _angel) {
-		return _angel*3.1415926 / 180.0;
+	// преобразование из градусов в радианы
+	inline double degree_to_radian(double _angle) {
+		return _angle*3.1415926 / 180.0;
 	}
 
 	inline double Fish::get_vision() const {
@@ -288,8 +313,12 @@ namespace aquarium {
 		return death_time != fish_type->aquarium->tempo;
 	}
 
-	inline void FishType::add_fish(const Location _l) {
+	inline void FishType::add_fish(const Location &_l) {
 		fishes.emplace_back(_l, DeathTime(aquarium->tempo + lifetime), *this);
+	}
+
+	inline void FishType::fish_control(FishNumber _fn, A _a) {
+		fishes[_fn.value].control(_a);
 	}
 
 	inline void Fish::check_borders() {
@@ -370,9 +399,23 @@ namespace aquarium {
 		death_time += fish_type->lifetime / 8;
 	}
 
+	inline void Fish::control(A _a) {
+		check_wall(false);
+		x += (fish_type->speed_run*cos(degree_to_radian(_a.value)));
+		y += (fish_type->speed_run*sin(degree_to_radian(_a.value)));
+		a = _a.value;
+		check_borders();
+		step_done = true;
+	}
+
 	inline void FishType::clear_chases() {
 		for (Fish &one_fish : fishes)
 			one_fish.clear_chase();
+	}
+
+	inline void FishType::clear_step_done() {
+		for (Fish &one_fish : fishes)
+			one_fish.clear_step_done();
 	}
 
 	inline std::pair<const std::string, std::vector<Location>> FishType::locations() const {
@@ -399,9 +442,17 @@ namespace aquarium {
 	}
 
 	inline void Aquarium::add_fish(FishTypeName _ftn, const Location _l) {
+		// ищем тип с нужным именем
 		auto type_iter = find_if(types.begin(), types.end(),
 			[&](const FishType &_ft){ return _ft.get_name() == _ftn.value; });
 		type_iter->add_fish(_l);
+	}
+
+	inline void Aquarium::fish_control(FishTypeName _ftn, FishNumber _fn, A _a) {
+		// ищем тип с нужным именем
+		auto type_iter = find_if(types.begin(), types.end(),
+			[&](const FishType &_ft){ return _ft.get_name() == _ftn.value; });
+		type_iter->fish_control(_fn, _a);
 	}
 
 	inline std::map<std::string, std::vector<Location>> Aquarium::get_fish_locations() const {
@@ -456,58 +507,62 @@ namespace aquarium {
 	}
 
 	void Fish::step() {
-		bool done = false; // сделала ли рыба ход. is fish made step
-		DiplomaticStatus current_diplomatic_status(0);
-		// поиск врагов. looking for emenies
-		// получение минимального дипломатического статуса
-		// getting minimal diplomatic status
-		for (const FishType &one_type : fish_type->aquarium->types) {
-			DiplomaticStatus new_diplomatic_status(fish_type->aquarium->relations.at(std::make_pair(fish_type->get_name(), one_type.get_name())));
-			if (new_diplomatic_status < current_diplomatic_status) {
-				current_diplomatic_status = new_diplomatic_status;
-			}
-		}
-		while (current_diplomatic_status != DiplomaticStatus(0)) {
-			Fish *nearest_fish = nearest(current_diplomatic_status, false);
-			if (nearest_fish) {
-				run(*nearest_fish, false); // убегать. run away
-				current_diplomatic_status = DiplomaticStatus(0);
-				done = true;
-				break;
-			}
-			++current_diplomatic_status;
-		}
-		// если рыба еще не сделала ход, то она ищет еду
-		// if fish haven't made step yet, it looks for food
-		if (!done) {
-			// получение максимального дипломатического статуса
-			// getting maximal diplomatic status
+		// если рыба еще не сделала ход
+		// (она уже могла сделать ход, если ею управляет мышка)
+		// или что-то еще
+		if (!step_done) {
+			DiplomaticStatus current_diplomatic_status(0);
+			// поиск врагов. looking for emenies
+			// получение минимального дипломатического статуса
+			// getting minimal diplomatic status
 			for (const FishType &one_type : fish_type->aquarium->types) {
 				DiplomaticStatus new_diplomatic_status(fish_type->aquarium->relations.at(std::make_pair(fish_type->get_name(), one_type.get_name())));
-				if (new_diplomatic_status > current_diplomatic_status) {
+				if (new_diplomatic_status < current_diplomatic_status) {
 					current_diplomatic_status = new_diplomatic_status;
 				}
 			}
 			while (current_diplomatic_status != DiplomaticStatus(0)) {
-				Fish *nearest_fish = nearest(current_diplomatic_status, true);
+				Fish *nearest_fish = nearest(current_diplomatic_status, false);
 				if (nearest_fish) {
-					run(*nearest_fish, true); // догонять. chase
-					nearest_fish->chased = true;
+					run(*nearest_fish, false); // убегать. run away
 					current_diplomatic_status = DiplomaticStatus(0);
-					done = true;
+					step_done = true;
 					break;
 				}
-				--current_diplomatic_status;
+				++current_diplomatic_status;
 			}
-		}
-		// если она не нашла ни врагов, ни еды, то она просто гуляет, или колеблется на месте
-		// if fish haven't found emenies or food, then it walk or stay near on it's place
-		if (!done) {
-			if (fish_type->settled) {
-				stay();
+			// если рыба еще не сделала ход, то она ищет еду
+			// if fish haven't made step yet, it looks for food
+			if (!step_done) {
+				// получение максимального дипломатического статуса
+				// getting maximal diplomatic status
+				for (const FishType &one_type : fish_type->aquarium->types) {
+					DiplomaticStatus new_diplomatic_status(fish_type->aquarium->relations.at(std::make_pair(fish_type->get_name(), one_type.get_name())));
+					if (new_diplomatic_status > current_diplomatic_status) {
+						current_diplomatic_status = new_diplomatic_status;
+					}
+				}
+				while (current_diplomatic_status != DiplomaticStatus(0)) {
+					Fish *nearest_fish = nearest(current_diplomatic_status, true);
+					if (nearest_fish) {
+						run(*nearest_fish, true); // догонять. chase
+						nearest_fish->chased = true;
+						current_diplomatic_status = DiplomaticStatus(0);
+						step_done = true;
+						break;
+					}
+					--current_diplomatic_status;
+				}
 			}
-			else {
-				walk();
+			// если она не нашла ни врагов, ни еды, то она просто гуляет, или колеблется на месте
+			// if fish haven't found emenies or food, then it walk or stay near on it's place
+			if (!step_done) {
+				if (fish_type->settled) {
+					stay();
+				}
+				else {
+					walk();
+				}
 			}
 		}
 	}
@@ -527,6 +582,7 @@ namespace aquarium {
 		}
 		for (FishType &one_type : types) {
 			one_type.clear_chases();
+			one_type.clear_step_done();
 		}
 		for (FishType &one_type : types) {
 			one_type.born();

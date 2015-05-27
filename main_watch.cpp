@@ -57,14 +57,14 @@ using aquarium::A;						// класс угол (в градусах)
 using aquarium::DiplomaticStatus;		// класс отношений между типами рыб
 
 
-// размеры аквариума
-const double x_m = 1300, y_m = 900;
-// размер рыбы
-const double fish_size = 10;
-
 int main() {
 
 	try {
+
+		// размеры аквариума
+		double x_m = 1300, y_m = 650;
+		// размер рыбы
+		double fish_size = 10;
 
 		// сам аквариум
 		Aquarium a1{ XMax(x_m), YMax(y_m), FishSize(fish_size) };
@@ -123,8 +123,17 @@ int main() {
 			// обработка событий
 			Event event;
 			while (window.pollEvent(event)) {
+				// обработка закрытия окна
 				if (event.type == Event::Closed)
 					window.close();
+				// обработка изменения размеров окна
+				if (event.type == Event::EventType::Resized) {
+					x_m = event.size.width;
+					y_m = event.size.height;
+					a1.set_size(XMax(x_m), YMax(y_m));
+					sf::FloatRect visible_area(0, 0, x_m, y_m);
+					window.setView(sf::View(visible_area));
+				}
 			}
 
 			// рисуем картинку и параллельно создаем поток,
@@ -180,7 +189,7 @@ int main() {
 
 		}
 
-	}
+	}	// конец блока try
 	catch (const exception &_e) {
 		cout << _e.what() << endl;
 		cin.get();
